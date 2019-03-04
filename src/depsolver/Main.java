@@ -1,3 +1,5 @@
+package depsolver;
+
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.TypeReference;
 
@@ -38,10 +40,8 @@ public class Main {
     private static int solvedCommandsCost = Integer.MAX_VALUE;
 
     public static void main(String[] args) throws IOException {
-        TypeReference<List<Package>> repoType = new TypeReference<>() {
-        };
-        TypeReference<List<String>> strListType = new TypeReference<>() {
-        };
+        TypeReference<List<Package>> repoType = new TypeReference<>() {};
+        TypeReference<List<String>> strListType = new TypeReference<>() {};
 
         repo = JSON.parseObject(readFile(args[0]), repoType);
         List<String> initial = JSON.parseObject(readFile(args[1]), strListType);
@@ -74,15 +74,12 @@ public class Main {
             String[] split = s.split("=");
             Package pack;
 
-            if(split.length > 1) {
-                pack = repo.stream().
+            if(split.length > 1) pack = repo.stream().
                     filter(p -> p.getName().equals(split[0]) && p.getVersion().equals(split[1])).
                     findFirst().orElse(null);
-            } else {
-                pack = repo.stream().
-                        filter(p -> p.getName().equals(split[0])).
-                        findFirst().orElse(null);
-            }
+            else pack = repo.stream().
+                    filter(p -> p.getName().equals(split[0])).
+                    findFirst().orElse(null);
 
             initialRepo.add(pack);
         }
