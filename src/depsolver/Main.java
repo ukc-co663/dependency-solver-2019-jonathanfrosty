@@ -90,6 +90,7 @@ public class Main {
     private static void search(List<Package> packageList, List<String> commands) {
         if (isValid(packageList) && !isSeen(packageList)) {
             seenRepos.add(packageList);
+
             if (isFinal(packageList)) {
                 int commandsCost = getCommandsCost(commands);
 
@@ -100,17 +101,17 @@ public class Main {
                 }
             } else {
                 for (Package p : repo) {
-                    boolean install = !packageList.contains(p);
+                    boolean installed = packageList.contains(p);
                     List<Package> newRepo = packageList;
                     List<String> newCommands = commands;
 
-                    if(install) {
-                        if(!haveAlreadyInstalledOrUninstalled('-', commands, p)) {
+                    if(!installed) {
+                        if(!haveUninstalled(commands, p)) {
                             newRepo = installPackage(packageList, p);
                             newCommands = getNewCommands(true, p, commands);
                         }
                     } else {
-                        if(!haveAlreadyInstalledOrUninstalled('+', commands, p)) {
+                        if(!haveInstalled(commands, p) || commands.size() <= constraints.size()) {
                             newRepo = uninstallPackage(packageList, p);
                             newCommands = getNewCommands(false, p, commands);
                         }
@@ -233,9 +234,17 @@ public class Main {
         return repoClone;
     }
 
-    private static boolean haveAlreadyInstalledOrUninstalled(char c, List<String> commands, Package pack) {
+    private static boolean haveInstalled(List<String> commands, Package pack) {
+        return haveInstalledOrUninstalled('+', commands, pack);
+    }
+
+    private static boolean haveUninstalled(List<String> commands, Package pack) {
+        return haveInstalledOrUninstalled('-', commands, pack);
+    }
+
+    private static boolean haveInstalledOrUninstalled(char c, List<String> commands, Package pack) {
         for(String command : commands) {
-            if(command.charAt(0) == c) {
+            if (command.charAt(0) == c) {
                 String[] commandSplit = split(command);
                 String name = commandSplit[0];
                 String version = commandSplit[1];
@@ -244,6 +253,7 @@ public class Main {
                 if (!version.equals("") && pack.getName().equals(name) && pack.getVersion().equals(version)) return true;
             }
         }
+
         return false;
     }
 
