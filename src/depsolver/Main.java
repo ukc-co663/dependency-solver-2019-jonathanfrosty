@@ -40,8 +40,8 @@ public class Main {
     private static int solvedCommandsCost = Integer.MAX_VALUE;
 
     public static void main(String[] args) throws IOException {
-        TypeReference<List<Package>> repoType = new TypeReference<>() {};
-        TypeReference<List<String>> strListType = new TypeReference<>() {};
+        TypeReference<List<Package>> repoType = new TypeReference<List<Package>>() {};
+        TypeReference<List<String>> strListType = new TypeReference<List<String>>() {};
 
         repo = JSON.parseObject(readFile(args[0]), repoType);
         List<String> initial = JSON.parseObject(readFile(args[1]), strListType);
