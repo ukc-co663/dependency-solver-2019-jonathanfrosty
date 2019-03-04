@@ -91,10 +91,12 @@ public class Main {
         if (isValid(packageList) && !isSeen(packageList)) {
             seenRepos.add(packageList);
             if (isFinal(packageList)) {
-                if (getCommandsCost(commands) < solvedCommandsCost) {
+                int commandsCost = getCommandsCost(commands);
+
+                if (commandsCost < solvedCommandsCost) {
                     solvedRepo = packageList;
                     solvedCommands = commands;
-                    solvedCommandsCost = getCommandsCost(commands);
+                    solvedCommandsCost = commandsCost;
                 }
             } else {
                 for (Package p : repo) {
@@ -103,10 +105,12 @@ public class Main {
                     List<String> newCommands = commands;
 
                     if(install) {
-                        newRepo = installPackage(packageList, p);
-                        newCommands = getNewCommands(true, p, commands);
+                        if(!haveAlreadyInstalledOrUninstalled('-', commands, p)) {
+                            newRepo = installPackage(packageList, p);
+                            newCommands = getNewCommands(true, p, commands);
+                        }
                     } else {
-                        if(!haveAlreadyInstalled(commands, p)) {
+                        if(!haveAlreadyInstalledOrUninstalled('+', commands, p)) {
                             newRepo = uninstallPackage(packageList, p);
                             newCommands = getNewCommands(false, p, commands);
                         }
@@ -201,10 +205,10 @@ public class Main {
 
                 if(version.equals("")) {
                     Package pack = repo.stream().filter(p -> p.getName().equals(name)).findFirst().orElse(null);
-                    cost += pack.getSize();
+                    if(pack != null) cost += pack.getSize();
                 } else {
                     Package pack = repo.stream().filter(p -> p.getName().equals(name) && p.getVersion().equals(version)).findFirst().orElse(null);
-                    cost += pack.getSize();
+                    if(pack != null) cost += pack.getSize();
                 }
 
             } else {
@@ -229,14 +233,16 @@ public class Main {
         return repoClone;
     }
 
-    private static boolean haveAlreadyInstalled(List<String> commands, Package pack) {
+    private static boolean haveAlreadyInstalledOrUninstalled(char c, List<String> commands, Package pack) {
         for(String command : commands) {
-            String[] commandSplit = split(command);
-            String name = commandSplit[0];
-            String version = commandSplit[1];
+            if(command.charAt(0) == c) {
+                String[] commandSplit = split(command);
+                String name = commandSplit[0];
+                String version = commandSplit[1];
 
-            if(version.equals("") && pack.getName().equals(name)) return true;
-            if(!version.equals("") && pack.getName().equals(name) && pack.getVersion().equals(version)) return true;
+                if (version.equals("") && pack.getName().equals(name)) return true;
+                if (!version.equals("") && pack.getName().equals(name) && pack.getVersion().equals(version)) return true;
+            }
         }
         return false;
     }
