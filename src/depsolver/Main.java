@@ -6,10 +6,7 @@ import com.alibaba.fastjson.TypeReference;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 
 class Package {
     private String name;
@@ -111,7 +108,7 @@ public class Main {
                             newCommands = getNewCommands(true, p, commands);
                         }
                     } else {
-                        if(!haveInstalled(commands, p) || commands.size() <= constraints.size()) {
+                        if(!haveInstalled(commands, p) || commands.size() < constraints.size()) {
                             newRepo = uninstallPackage(packageList, p);
                             newCommands = getNewCommands(false, p, commands);
                         }
@@ -120,6 +117,8 @@ public class Main {
                     search(newRepo, newCommands);
                 }
             }
+
+            seenRepos.remove(packageList);
         }
     }
 
