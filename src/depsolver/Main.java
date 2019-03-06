@@ -36,6 +36,9 @@ public class Main {
     private static List<String> solvedCommands = null;
     private static int solvedCommandsCost = Integer.MAX_VALUE;
 
+    private static long startTime = new Date().getTime();
+    private static boolean terminate = false;
+
     public static void main(String[] args) throws IOException {
         TypeReference<List<Package>> repoType = new TypeReference<List<Package>>() {};
         TypeReference<List<String>> strListType = new TypeReference<List<String>>() {};
@@ -85,7 +88,7 @@ public class Main {
     }
 
     private static void search(List<Package> packageList, List<String> commands) {
-        if (!isSeen(packageList) && isValid(packageList)) {
+        if (!terminate && !isSeen(packageList) && isValid(packageList)) {
             seenRepos.add(packageList);
 
             if (isFinal(packageList)) {
@@ -95,7 +98,7 @@ public class Main {
                     solvedRepo = packageList;
                     solvedCommands = commands;
                     solvedCommandsCost = commandsCost;
-                }
+                } else if (exceededPracticalRunTime()) terminate = true;
             } else {
                 for (Package p : repo) {
                     boolean installed = packageList.contains(p);
@@ -108,7 +111,7 @@ public class Main {
                             newCommands = getNewCommands(true, p, commands);
                         }
                     } else {
-                        if(!haveInstalled(commands, p) || commands.size() < constraints.size()) {
+                        if((!haveInstalled(commands, p) || commands.size() < constraints.size()) && shouldUninstall(p)) {
                             newRepo = uninstallPackage(packageList, p);
                             newCommands = getNewCommands(false, p, commands);
                         }
@@ -120,6 +123,21 @@ public class Main {
 
             seenRepos.remove(packageList);
         }
+    }
+
+    private static boolean exceededPracticalRunTime() {
+        return new Date().getTime() - startTime > 60000;
+    }
+
+    private static boolean shouldUninstall(Package pack) {
+        String name = pack.getName();
+        String version = pack.getVersion();
+        String packString = version.equals("") ? name : name + "=" + version;
+
+        if(constraints.contains('+' + packString)) return false;
+        else if(constraints.contains('-' + packString)) return true;
+
+        return true;
     }
 
     private static boolean isValid(List<Package> repo) {
@@ -251,17 +269,17 @@ public class Main {
         return new String[] {name, version};
     }
 
-    private static List<String> getNewCommands(boolean install, Package p, List<String> commands) {
-        String command = generateCommand(install, p);
+    private static List<String> getNewCommands(boolean install, Package pack, List<String> commands) {
+        String command = generateCommand(install, pack);
         List<String> commandsClone = new ArrayList<>(commands);
         commandsClone.add(command);
 
         return commandsClone;
     }
 
-    private static String generateCommand(boolean install, Package p) {
+    private static String generateCommand(boolean install, Package pack) {
         char firstCharacter = install ? '+' : '-';
-        return firstCharacter + p.getName() + "=" + p.getVersion();
+        return firstCharacter + pack.getName() + "=" + pack.getVersion();
     }
 
     // returns -1 if v1 is smaller than v2, 1 if greater, 0 if equal
