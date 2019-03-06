@@ -31,6 +31,7 @@ class Package {
 public class Main {
     private static List<Package> repo;
     private static List<String> constraints;
+    private static List<String> initialCommands = new ArrayList<>();
     private static HashSet<List<Package>> seenRepos = new HashSet<>();
     private static List<Package> solvedRepo = null;
     private static List<String> solvedCommands = null;
@@ -48,8 +49,9 @@ public class Main {
         constraints = JSON.parseObject(readFile(args[2]), strListType);
 
         List<Package> initialRepo = getInitialRepo(initial);
+        List<Package> validInitialRepo = makeValidInitialRepo(initialRepo);
 
-        search(initialRepo, new ArrayList<>());
+        search(validInitialRepo, initialCommands);
 
         if (solvedRepo == null) {
             System.out.println("No solution found.");
@@ -85,6 +87,52 @@ public class Main {
         }
 
         return initialRepo;
+    }
+
+    private static List<Package> makeValidInitialRepo(List<Package> packageList) {
+        while(!isValid(packageList)) {
+            for (Package p : repo) {
+                if (packageList.contains(p)) {
+                    boolean packageRemoved = false;
+
+                    List<List<String>> deps = p.getDepends();
+                    for (List<String> clause : deps) {
+                        boolean clauseMet = false;
+                        for (String dep : clause) {
+                            for (Package otherPack : packageList) {
+                                if (!p.equals(otherPack)) {
+                                    if (checkRequirement(dep, p)) {
+                                        clauseMet = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (clauseMet) break;
+                        }
+                        if (!clauseMet) {
+                            packageRemoved = true;
+                            packageList.remove(p);
+                            initialCommands.add('-' + p.getName() + '=' + p.getVersion());
+                        }
+                    }
+
+                    if (!packageRemoved) {
+                        for (String conf : p.getConflicts()) {
+                            for (Package otherPack : packageList) {
+                                if (!p.equals(otherPack)) {
+                                    if (checkRequirement(conf, otherPack)) {
+                                        packageList.remove(p);
+                                        initialCommands.add('-' + p.getName() + '=' + p.getVersion());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return packageList;
     }
 
     private static void search(List<Package> packageList, List<String> commands) {
@@ -140,22 +188,22 @@ public class Main {
         return true;
     }
 
-    private static boolean isValid(List<Package> repo) {
-        if(repo.size() == 0) return true;
+    private static boolean isValid(List<Package> packageList) {
+        if(packageList.size() == 0) return true;
 
-        Package mostRecent = repo.get(repo.size() - 1);
+        Package mostRecent = packageList.get(packageList.size() - 1);
         List<List<String>> deps = mostRecent.getDepends();
-        if(!checkDependencies(repo, deps)) return false;
+        if(!checkDependencies(packageList, deps)) return false;
 
-        return checkConflicts(repo);
+        return checkConflicts(packageList);
     }
 
-    private static boolean checkDependencies(List<Package> repo, List<List<String>> deps) {
+    private static boolean checkDependencies(List<Package> packageList, List<List<String>> deps) {
         for(List<String> clause : deps) {
             boolean clauseMet = false;
             for(String dep : clause) {
-                for(int i = 0; i < repo.size() - 1; i++) {
-                    if(checkRequirement(dep, repo.get(i))) { clauseMet = true; break; }
+                for(int i = 0; i < packageList.size() - 1; i++) {
+                    if(checkRequirement(dep, packageList.get(i))) { clauseMet = true; break; }
                 }
                 if(clauseMet) break;
             }
@@ -165,10 +213,10 @@ public class Main {
         return true;
     }
 
-    private static boolean checkConflicts(List<Package> repo) {
-        for(Package pack : repo) {
+    private static boolean checkConflicts(List<Package> packageList) {
+        for(Package pack : packageList) {
             for(String conf : pack.getConflicts()) {
-                for(Package otherPack : repo) {
+                for(Package otherPack : packageList) {
                     if(!pack.equals(otherPack)) {
                         if(checkRequirement(conf, otherPack)) return false;
                     }
@@ -179,7 +227,7 @@ public class Main {
         return true;
     }
 
-    private static boolean isFinal(List<Package> repo) {
+    private static boolean isFinal(List<Package> packageList) {
         for(String constraint : constraints) {
             boolean install = constraint.charAt(0) == '+';
 
@@ -189,14 +237,14 @@ public class Main {
 
             if(install) {
                 boolean installed = false;
-                for(Package p : repo) {
+                for(Package p : packageList) {
                     if(version.equals("") && p.getName().equals(name)) { installed = true; break; }
                     if(!version.equals("") && p.getName().equals(name) && p.getVersion().equals(version)) { installed = true; break; }
                 }
 
                 if(!installed) return false;
             } else {
-                for(Package p : repo) {
+                for(Package p : packageList) {
                     if(version.equals("") && p.getName().equals(name)) return false;
                     if(!version.equals("") && p.getName().equals(name) && p.getVersion().equals(version)) return false;
                 }
@@ -231,16 +279,16 @@ public class Main {
         return cost;
     }
 
-    private static boolean isSeen(List<Package> repo) { return seenRepos.contains(repo); }
+    private static boolean isSeen(List<Package> packageList) { return seenRepos.contains(packageList); }
 
-    private static List<Package> installPackage(List<Package> repo, Package pack) {
-        List<Package> repoClone = new ArrayList<>(repo);
+    private static List<Package> installPackage(List<Package> packageList, Package pack) {
+        List<Package> repoClone = new ArrayList<>(packageList);
         repoClone.add(pack);
         return repoClone;
     }
 
-    private static List<Package> uninstallPackage(List<Package> repo, Package pack) {
-        List<Package> repoClone = new ArrayList<>(repo);
+    private static List<Package> uninstallPackage(List<Package> packageList, Package pack) {
+        List<Package> repoClone = new ArrayList<>(packageList);
         repoClone.remove(pack);
         return repoClone;
     }
