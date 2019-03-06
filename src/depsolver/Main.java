@@ -85,7 +85,7 @@ public class Main {
     }
 
     private static void search(List<Package> packageList, List<String> commands) {
-        if (isValid(packageList) && !isSeen(packageList)) {
+        if (!isSeen(packageList) && isValid(packageList)) {
             seenRepos.add(packageList);
 
             if (isFinal(packageList)) {
@@ -125,27 +125,21 @@ public class Main {
     private static boolean isValid(List<Package> repo) {
         if(repo.size() == 0) return true;
 
-        List<Package> repoClone = new ArrayList<>(repo);
-
-        boolean validConfs = checkConflicts(repoClone);
-
-        Package mostRecent = repoClone.remove(repo.size() - 1);
+        Package mostRecent = repo.get(repo.size() - 1);
         List<List<String>> deps = mostRecent.getDepends();
-        boolean validDeps = checkDependencies(repoClone, deps);
+        if(!checkDependencies(repo, deps)) return false;
 
-
-        return validDeps && validConfs;
+        return checkConflicts(repo);
     }
 
     private static boolean checkDependencies(List<Package> repo, List<List<String>> deps) {
         for(List<String> clause : deps) {
             boolean clauseMet = false;
             for(String dep : clause) {
-                boolean met = false;
-                for(Package pack : repo) {
-                    if(checkRequirement(dep, pack)) met = true;
+                for(int i = 0; i < repo.size() - 1; i++) {
+                    if(checkRequirement(dep, repo.get(i))) { clauseMet = true; break; }
                 }
-                clauseMet |= met;
+                if(clauseMet) break;
             }
             if(!clauseMet) return false;
         }
@@ -155,11 +149,11 @@ public class Main {
 
     private static boolean checkConflicts(List<Package> repo) {
         for(Package pack : repo) {
-            List<Package> otherPackages = new ArrayList<>(repo);
-            otherPackages.remove(pack);
             for(String conf : pack.getConflicts()) {
-                for(Package otherPack : otherPackages) {
-                    if(checkRequirement(conf, otherPack)) return false;
+                for(Package otherPack : repo) {
+                    if(!pack.equals(otherPack)) {
+                        if(checkRequirement(conf, otherPack)) return false;
+                    }
                 }
             }
         }
@@ -242,18 +236,11 @@ public class Main {
     }
 
     private static boolean haveInstalledOrUninstalled(char c, List<String> commands, Package pack) {
-        for(String command : commands) {
-            if (command.charAt(0) == c) {
-                String[] commandSplit = split(command);
-                String name = commandSplit[0];
-                String version = commandSplit[1];
+        String name = pack.getName();
+        String version = pack.getVersion();
+        String command = c + (version.equals("") ? name : name + "=" + version);
 
-                if (version.equals("") && pack.getName().equals(name)) return true;
-                if (!version.equals("") && pack.getName().equals(name) && pack.getVersion().equals(version)) return true;
-            }
-        }
-
-        return false;
+        return commands.contains(command);
     }
 
     private static String[] split(String string) {
